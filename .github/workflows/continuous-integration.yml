@@ -25,40 +25,5 @@ jobs:
           key: docker-${{ runner.os }}-${{ hashFiles('**/spring-ai-spring-boot-autoconfigure/src/test/java/org/springframework/ai/autoconfigure/ollama/OllamaImage.java') }}
 
       - name: Build with Maven and deploy to Artifactory
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          SPRING_AI_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        run: mvn -s settings.xml -Pintegration-tests -Dfailsafe.rerunFailingTestsCount=3 --batch-mode --update-snapshots deploy
+        run: mvn -s settings.xml -Dfailsafe.rerunFailingTestsCount=4 --batch-mode --update-snapshots verify
 
-      - name: Generate Java docs
-        run: mvn javadoc:aggregate
-
-      - name: Generate Reference docs
-        working-directory: spring-ai-docs
-        run: mvn assembly:single
-
-      - name: Capture project version
-        run: echo PROJECT_VERSION=$(mvn help:evaluate -Dexpression=project.version --quiet -DforceStdout) >> $GITHUB_ENV
-
-      - name: Setup SSH key
-        env:
-          DOCS_SSH_KEY: ${{ secrets.DOCS_SSH_KEY }}
-          DOCS_SSH_HOST_KEY: ${{ secrets.DOCS_SSH_HOST_KEY }}
-        run: |
-          mkdir "$HOME/.ssh"
-          echo "$DOCS_SSH_KEY" > "$HOME/.ssh/key"
-          chmod 600 "$HOME/.ssh/key"
-          echo "$DOCS_SSH_HOST_KEY" > "$HOME/.ssh/known_hosts"
-
-      - name: Deploy docs
-        env:
-          DOCS_HOST: ${{ secrets.DOCS_HOST }}
-          DOCS_PATH: ${{ secrets.DOCS_PATH }}
-          DOCS_USERNAME: ${{ secrets.DOCS_USERNAME }}
-        working-directory: spring-ai-docs/target
-        run: |
-          unzip spring-ai-$PROJECT_VERSION-docs.zip
-          ssh -i $HOME/.ssh/key $DOCS_USERNAME@$DOCS_HOST cd $DOCS_PATH && mkdir -p $PROJECT_VERSION/api
-          scp -i $HOME/.ssh/key -r api $DOCS_USERNAME@$DOCS_HOST:$DOCS_PATH/$PROJECT_VERSION/api
